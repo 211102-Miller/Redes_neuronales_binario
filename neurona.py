@@ -54,10 +54,10 @@ matriz_con_bias = np.hstack((columna_unos, data_matrix))
 print("matriz con el bias","\n",matriz_con_bias)
 
 #margen de error
-erro = 0
+erro = 1
 
 #tasa de aprendizaje o eta
-n = 0.2
+n = 0.000000000001
 
 #longitud de nuestra columnas para sacar el peso
 num_columnas = matriz_con_bias.shape[1]
@@ -65,7 +65,7 @@ num_columnas = matriz_con_bias.shape[1]
 w = np.random.randint(low=0, high=10, size=(num_columnas, 1))
 print("pesos","\n",w)
 
-cantidad_iteraciones = 30
+cantidad_iteraciones = 200
 
 
 #arreglos con mis datos
