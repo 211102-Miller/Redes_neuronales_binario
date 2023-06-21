@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import tkinter as tk
 from tkinter import ttk
 import csv
+import math as m
 
 
 #Archivo donde se sacan las X y se ponen en una matriz
@@ -22,7 +23,7 @@ filename = '211102.csv'
 data_matrix = valoresX(filename)
 x = np.array(data_matrix)
 
-#Archivo donde se sacan la Y desiasda
+#Archivo donde se sacan la Y desiada
 def valoresY(filename):
     matrix = []
     with open(filename, 'r') as file:
@@ -41,9 +42,10 @@ yd = np.array(data_matrixY)
 
 #se declaran las variables que se usaran
 bias = 1 #nuestro bias o sesgo
-error = 0 #el margen de error
-n= 0.0002 # tasa de aprendisaje o eta
-cantidad_iteraciones = 5
+error = 1 #el margen de error
+n= 0.0000001
+#0.00000002 # tasa de aprendisaje o eta
+cantidad_iteraciones = 100000000000
 
 
 #Se une nuestro bias con nuestras x
@@ -52,15 +54,15 @@ def union_bias_x (x,bias):
     matrix_con_bias = np.hstack((columna_bias,x))
     return matrix_con_bias
 resultado_bias_x = union_bias_x(x,bias)
-print(resultado_bias_x)
+#print(resultado_bias_x)
 
 #Se generan los pesos iniciales
 def genera_pesos(resultado_bias_x):
     num_columnas = resultado_bias_x.shape[1]
-    w = np.random.randint(low=0, high=10, size=(num_columnas, 1))
+    w = np.random.randint(low=-5, high=5, size=(num_columnas, 1))
     return w
 resultado_pesos =  genera_pesos(resultado_bias_x)
-print(resultado_pesos)
+#print(resultado_pesos)
 
 
 #declaramos nuestros arreglos para guardar los datos
@@ -68,62 +70,65 @@ contador = 0 #para saber el numero de generaciones
 datos = [] #guardamos todos nuestros datos requeridos
 toleranciaError = []
 
+    
+
 for i in range(cantidad_iteraciones):
     
     #sacamos nuestra U
     def sacar_u(resultado_bias_x,resultado_pesos):
-        u = np.dot(resultado_bias_x,resultado_pesos)
+        u = np.linalg.multi_dot([resultado_bias_x,resultado_pesos])
         return u
     resultado_u = sacar_u(resultado_bias_x,resultado_pesos)
-    print("resultado de U","\n",resultado_u)
+    #print("resultado de U","\n",resultado_u)
 
     #funcion de activacion f(x) = x
     def activacion(x):
         return x
     resultado_activacion = activacion(resultado_u)
-    print("Funcion de activacion","\n",resultado_activacion)
+    #print("Funcion de activacion","\n",resultado_activacion)
 
     #Calculamos nuestros errores  
     def calculamos_error(yd,resultado_activacion):
         e = yd - resultado_activacion
         return e
     resultado_error = calculamos_error(yd,resultado_activacion)
-    print("error","\n",resultado_error)
+    #print("error","\n",resultado_error)
 
     #Sacamos nuestra tolerancia de error
     def torera_error(resultado_error):
+
+        aux = 0
+
+        long= len(resultado_error)
+        for i in range(len(resultado_error)):
+            aux = aux + resultado_error[i]**2
+        mse = aux / long
+        rmse = m.sqrt(mse)
+
         tolerancia = np.sum(np.abs(resultado_error))
         toleranciaError.append(tolerancia)
-        return tolerancia
+        return rmse
     tolera = torera_error(resultado_error)
     print("tolerancia de error",tolera)
 
-    pesos_requeridos = resultado_pesos.shape[0] # Sacamos la longitud de los pesos
+    #traspuesta de error - investigar 
 
-    #ajustamos nuesta longid de nuestro error para nuestros nuevos pesos
-    def ajustar_longitud(matriz, longitud_objetivo):
-        if matriz.shape[0] > longitud_objetivo:
-            matriz = matriz[:longitud_objetivo]
-        elif matriz.shape[0] < longitud_objetivo:
-            diferencia = longitud_objetivo - matriz.shape[0]
-            filas_faltantes = np.zeros((diferencia, matriz.shape[1]))
-            matriz = np.concatenate((matriz, filas_faltantes), axis=0)
-        return matriz
-    resultado_ajuste = ajustar_longitud(resultado_error,pesos_requeridos)
-    print("Resultado del ajuste",resultado_ajuste)
-
-    def delta_w (n,resultado_ajuste):
-        eta_delta = n * resultado_ajuste
-        return eta_delta
-    resultado_delta = delta_w(n,resultado_ajuste)
-    print("resultado de delta",resultado_delta)
+    def delta_w (n,resultado_error,resultado_bias_x,resultado_pesos):
+        error = np.transpose(resultado_error)
+        for i in range(len(resultado_pesos)):
+            error_por_x = np.linalg.multi_dot([error,resultado_bias_x])
+        multi = n * error_por_x   
+        return multi
+    resultado_delta = delta_w(n,resultado_error,resultado_bias_x,resultado_pesos)
 
     #Se hace la suma para el nuevo peso
     def nueva_peso(resultado_pesos,resultado_delta):
-        nuevo = resultado_pesos + resultado_delta
-        return nuevo
+        pesos = np.reshape(resultado_pesos, (1, -1))
+        nuevo =pesos + resultado_delta
+        nuevo_nuevo = np.reshape(nuevo, (-1, 1))
+        return nuevo_nuevo
     resultado_nuevo_peso = nueva_peso(resultado_pesos,resultado_delta)
-    print(resultado_nuevo_peso)
+    #print("nuevos pesos",resultado_nuevo_peso)
 
     #Pasmos
     converida_peso = resultado_pesos.tolist()
@@ -136,11 +141,13 @@ for i in range(cantidad_iteraciones):
 
     contador +=1
 
-print(datos)
-print(toleranciaError)
+    if tolera <= error:
+        break
 
+print(toleranciaError[-1])
 
 def create_table(datos_iteraciones):
+    
     root = tk.Tk()
 
     table = ttk.Treeview(root)
@@ -166,17 +173,18 @@ def create_table(datos_iteraciones):
 
 
     # Agregar filas a la tabla
-    for i, item in enumerate(datos_iteraciones):
+    for i, item in enumerate(datos_iteraciones[-100:]):
         table.insert(parent='', index='end', iid=i, text='', values=(str(item[0]), str(item[1]), str(item[2]),str(item[3]),str(item[4])))
 
-    table.pack()
+    
     # Graficar los datos
     plt.plot(toleranciaError)
 
     # Mostrar el gráfico
-    
-
+    table.pack()
     plt.show()
     root.mainloop()
+    
 
+    
 create_table(datos)
